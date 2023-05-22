@@ -1,11 +1,3 @@
-const plaid = require('plaid');
-
-// const client = new plaid.Client({
-//   clientID: process.env.PLAID_CLIENT_ID,
-//   secret: process.env.PLAID_SECRET,
-//   env: process.env.PLAID_ENVIRONMENT // Change this to 'development' or 'production' when ready
-// });
-
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 
 const configuration = new Configuration({
@@ -21,34 +13,30 @@ const configuration = new Configuration({
 
 const client = new PlaidApi(configuration);
 
-
 async function verifyAccessToken(accessToken) {
-    try { // Use Plaid's API to verify the access token
-        const response = await fetch('http://plaid.com/api/verifyAccessToken', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({accessToken})
-        });
-        const data = await response.json();
-        return data;
-    } catch (err) {
-        throw new Error(err.message);
-    }
+  try { // Use Plaid's API to verify the access token
+    const tokenResponse = await client.linkTokenGet({accessToken});
+    return tokenResponse.data;
+  } catch (err) {
+    throw new Error(err.message);
+  }
 }
 
-
-
-
-async function createTransaction(accessToken, amount, description) {
-    try {
-        const transaction = await Plaid.createTransaction(accessToken, amount, description);
-        return transaction;
-    } catch (err) {
-        console.log('Error occurred while creating transaction');
-    }
+async function createLinkToken(userId) {
+  try {
+    const response = await client.linkTokenCreate({
+      user: {
+        client_user_id: userId, // Associate the link token with the user ID
+      },
+      client_name: "My App",
+      products: ["auth"],
+      country_codes: ["US"],
+      language: "en",
+    });
+    return response.data.link_token;
+  } catch (err) {
+    throw new Error(err.message);
+  }
 }
 
-
-module.exports = { verifyAccessToken, createTransaction };
+module.exports = { verifyAccessToken, createLinkToken };

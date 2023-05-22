@@ -4,7 +4,6 @@ const LinkedAccount = require('../models/linkedAccount');
 const plaidService = require('../services/plaid');
 const stripeService = require('../services/stripe');
 const paypalService = require('../services/paypal');
-// const zelleService = require('../services/zelle'); // Include this if you have a Zelle service
 
 router.post('/link', async (req, res) => {
   const { userId, provider, accessToken } = req.body;
@@ -16,9 +15,7 @@ router.post('/link', async (req, res) => {
     await stripeService.verifyAccessToken(accessToken);
   } else if (provider === 'paypal') {
     await paypalService.verifyAccessToken(accessToken);
-  } /* else if (provider === 'zelle') {
-    await zelleService.verifyAccessToken(accessToken);
-  } */
+  }
 
   const account = await LinkedAccount.create({ userId, provider, accessToken });
 
@@ -74,5 +71,59 @@ router.post('/create', async (req, res) => {
   }
 });
 
+// New routes for Stripe and PayPal operations
+// Route to create a payment intent with stripe
+router.post('/stripe/create-payment-intent', async (req, res) => {
+  const { amount, currency } = req.body;
+  try {
+    const paymentIntent = await stripeService.createPaymentIntent(amount, currency);
+    res.json(paymentIntent);
+  } catch (error) {
+    res.status(500).json({ error: error.toString() });
+  }
+});
+
+// Route to retrieve a payment intent with stripe
+router.get('/stripe/retrieve-payment-intent/:paymentIntentId', async (req, res) => {
+  const { paymentIntentId } = req.params;
+  try {
+    const paymentIntent = await stripeService.retrievePaymentIntent(paymentIntentId);
+    res.json(paymentIntent);
+  } catch (error) {
+    res.status(500).json({ error: error.toString() });
+  }
+});
+
+// Route to confirm a payment intent with stripe
+router.post('/stripe/confirm-payment-intent', async (req, res) => {
+  const { paymentIntentId, paymentMethodId } = req.body;
+  try {
+    const paymentIntent = await stripeService.confirmPaymentIntent(paymentIntentId, paymentMethodId);
+    res.json(paymentIntent);
+  } catch (error) {
+    res.status(500).json({error: error.toString() });
+  }
+});
+
+// Route to create an order with paypal
+router.post('/paypal/create-order', async (req, res) => {
+  try {
+    const orderId = await paypalService.createOrder();
+    res.json({ orderId });
+  } catch (error) {
+    res.status(500).json({ error: error.toString() });
+  }
+});
+
+// Route to capture an order with paypal
+router.post('/paypal/capture-order', async (req, res) => {
+  const { orderId } = req.body;
+  try {
+    const captureId = await paypalService.captureOrder(orderId);
+    res.json({ captureId });
+  } catch (error) {
+    res.status(500).json({ error: error.toString() });
+  }
+});
 
 module.exports = router;
